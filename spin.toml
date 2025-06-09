@@ -16,7 +16,7 @@ component = "assets"
 
 [component.timeline]
 source = "main.wasm"
-allowed_outbound_hosts = ["https://byabbe.se/"]
+allowed_outbound_hosts = ["https://byabbe.se/", "https://en.wikipedia.org"]
 [component.timeline.build]
 command = "tinygo build -target=wasip1 -gc=leaking -buildmode=c-shared -no-debug -o main.wasm ."
 watch = ["**/*.go", "go.mod"]

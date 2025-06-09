@@ -20,35 +20,36 @@
     line-height: 1.6;
     color: var(--dark-color);
     background-color: #f5f7fa;
-    padding: 20px;
+    padding: 15px;
   }
   
   .container {
     max-width: 800px;
     margin: 0 auto;
-    padding: 20px;
+    padding: 15px;
   }
   
   header {
     text-align: center;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
   }
   
   h1 {
     font-weight: 700;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.3rem;
     color: var(--dark-color);
   }
   
   p {
     color: #6c757d;
     font-size: 1rem;
+    margin-bottom: 0.2rem;
   }
   
   footer {
     text-align: center;
-    margin-top: 2rem;
-    font-size: 0.9rem;
+    margin-top: 0.2rem;
+    font-size: 0.8rem;
     color: #6c757d;
   }
   
@@ -56,7 +57,7 @@
     display: flex;
     justify-content: center;
     gap: 1rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
   }
   
   .btn {
@@ -89,10 +90,10 @@
   
   .score-container {
     text-align: center;
-    margin: 1rem 0;
-    min-height: 50px;
+    margin: 0.8rem 0;
+    min-height: 40px;
     font-weight: 500;
-    padding: 0.5rem;
+    padding: 0.4rem;
     border-radius: 6px;
   }
   
@@ -109,17 +110,20 @@
   .events-container {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.1rem;
   }
   
   .event {
     background-color: white;
     border-radius: 8px;
-    padding: 1.25rem;
+    padding: 1rem;
     box-shadow: var(--shadow);
     cursor: move;
     transition: var(--transition);
     border-left: 4px solid var(--border-color);
+    display: flex;
+    align-items: flex-start;
+    gap: 2rem;
   }
   
   .event:hover {
@@ -139,13 +143,14 @@
   
   .event-title {
     font-weight: 600;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.3rem;
     color: var(--dark-color);
   }
   
   .event-description {
     color: #6c757d;
     font-size: 0.95rem;
+    line-height: 1.4;
   }
   
   .event-row {
@@ -158,17 +163,54 @@
     font-weight: bold;
     color: var(--primary-color);
     font-size: 1.2rem;
-    margin-right: 1.2rem;
     text-align: right;
     flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.5rem;
+    margin-right: 0.5rem;
+  }
+  
+  .event-image {
+    width: 100px;
+    height: 100px;
+    background-color: #c5c5c5;
+    border-radius: 4px;
+    flex-shrink: 0;
+    overflow: hidden;
+    margin: 0 0.5rem;
+  }
+  
+  .event-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
   
   .event-content {
     flex: 1;
+    min-width: 0;
+    margin-left: 0.5rem;
   }
   
   .event-year.hidden {
     display: none;
+  }
+  
+  .wiki-link {
+    font-size: 0.8rem;
+    color: var(--primary-color);
+    text-decoration: none;
+    padding: 0.2rem 0.5rem;
+    border: 1px solid var(--primary-color);
+    border-radius: 4px;
+    transition: all 0.2s ease;
+  }
+  
+  .wiki-link:hover {
+    background-color: var(--primary-color);
+    color: white;
   }
   
   @media (max-width: 600px) {
@@ -184,4 +226,24 @@
     .event {
       padding: 1rem;
     }
+  }
+  
+  .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: #ccc;
+  }
+  
+  .btn:disabled:hover {
+    background-color: #ccc;
+  }
+  
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+  }
+  
+  .shake {
+    animation: shake 0.3s ease-in-out;
   }  

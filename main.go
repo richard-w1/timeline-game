@@ -6,6 +6,7 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -17,39 +18,51 @@ type HistoricalEvent struct {
 	Description string    `json:"description"`
 	Date        time.Time `json:"date"`
 	Year        int       `json:"year"`
+	ImageURL    string    `json:"imageUrl,omitempty"`
 }
 
-type WikipediaEvent struct {
-	Text string `json:"text"`
-	Year int    `json:"year"`
-}
+func getWikipediaImage(title string) (string, error) {
+	// Convert title to URL format
+	url := fmt.Sprintf("https://en.wikipedia.org/w/api.php?action=query&titles=%s&prop=pageimages&format=json&pithumbsize=300", url.QueryEscape(title))
 
-type WikipediaResponse struct {
-	Events []WikipediaEvent `json:"events"`
-}
+	resp, err := spinhttp.Get(url)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch image: %v", err)
+	}
+	defer resp.Body.Close()
 
-type GameState struct {
-	Events     []HistoricalEvent `json:"events"`
-	StartTime  time.Time         `json:"startTime"`
-	IsComplete bool              `json:"isComplete"`
-}
-
-var gameState GameState
-
-func fetchWikipediaEvents() ([]HistoricalEvent, error) {
-	// a random date
-	month := time.Month(rand.Intn(12) + 1)
-	day := rand.Intn(28) + 1
-	if month == 2 && day > 28 {
-		day = 28
-	} else if (month == 4 || month == 6 || month == 9 || month == 11) && day > 30 {
-		day = 30
-	} else if day > 31 {
-		day = 31
+	var result struct {
+		Query struct {
+			Pages map[string]struct {
+				Thumbnail struct {
+					Source string `json:"source"`
+				} `json:"thumbnail"`
+			} `json:"pages"`
+		} `json:"query"`
 	}
 
-	// get events
-	url := fmt.Sprintf("https://byabbe.se/on-this-day/%d/%d/events.json", month, day)
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("failed to parse image response: %v", err)
+	}
+
+	// Get the first (and only) page
+	for _, page := range result.Query.Pages {
+		if page.Thumbnail.Source != "" {
+			return page.Thumbnail.Source, nil
+		}
+	}
+
+	return "", nil
+}
+
+func fetchWikipediaEvents() ([]HistoricalEvent, error) {
+	// random date
+	now := time.Now()
+	startOfYear := time.Date(now.Year(), 1, 1, 0, 0, 0, 0, time.UTC)
+	randomDays := rand.Intn(365)
+	randomDate := startOfYear.AddDate(0, 0, randomDays)
+
+	url := fmt.Sprintf("https://byabbe.se/on-this-day/%d/%d/events.json", randomDate.Month(), randomDate.Day())
 
 	resp, err := spinhttp.Get(url)
 	if err != nil {
@@ -62,7 +75,6 @@ func fetchWikipediaEvents() ([]HistoricalEvent, error) {
 		return nil, fmt.Errorf("failed to read response body: %v", err)
 	}
 
-	// parse response
 	var apiResp struct {
 		Date   string `json:"date"`
 		Events []struct {
@@ -74,35 +86,34 @@ func fetchWikipediaEvents() ([]HistoricalEvent, error) {
 			} `json:"wikipedia"`
 		} `json:"events"`
 	}
-
 	if err := json.Unmarshal(body, &apiResp); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %v", err)
 	}
 
 	if len(apiResp.Events) == 0 {
-		return nil, fmt.Errorf("no events found for date %d/%d", month, day)
+		return nil, fmt.Errorf("no events found for date %d/%d", randomDate.Month(), randomDate.Day())
 	}
 
-	events := make([]HistoricalEvent, 0, len(apiResp.Events))
+	// First, collect all valid events without images
+	validEvents := make([]HistoricalEvent, 0, len(apiResp.Events))
 	for _, e := range apiResp.Events {
 		year, err := strconv.Atoi(e.Year)
 		if err != nil || year <= 0 || year > time.Now().Year() {
 			continue
 		}
 
-		date := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
+		date := time.Date(year, randomDate.Month(), randomDate.Day(), 0, 0, 0, 0, time.UTC)
 
 		title := e.Description
 		if len(e.Wikipedia) > 0 && e.Wikipedia[0].Title != "" {
 			title = e.Wikipedia[0].Title
 		}
 
-		// no description, skip
 		if e.Description == "" {
 			continue
 		}
 
-		events = append(events, HistoricalEvent{
+		validEvents = append(validEvents, HistoricalEvent{
 			Title:       title,
 			Description: e.Description,
 			Date:        date,
@@ -110,7 +121,27 @@ func fetchWikipediaEvents() ([]HistoricalEvent, error) {
 		})
 	}
 
-	return events, nil
+	if len(validEvents) == 0 {
+		return nil, fmt.Errorf("no valid events found for date %d/%d", randomDate.Month(), randomDate.Day())
+	}
+
+	// Shuffle and pick 5 events
+	rand.Shuffle(len(validEvents), func(i, j int) {
+		validEvents[i], validEvents[j] = validEvents[j], validEvents[i]
+	})
+
+	numEvents := 5
+	if len(validEvents) < numEvents {
+		numEvents = len(validEvents)
+	}
+
+	// Now fetch images only for the selected events
+	for i := 0; i < numEvents; i++ {
+		imageURL, _ := getWikipediaImage(validEvents[i].Title)
+		validEvents[i].ImageURL = imageURL
+	}
+
+	return validEvents[:numEvents], nil
 }
 
 // spin http handler

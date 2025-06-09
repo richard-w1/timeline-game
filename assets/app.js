@@ -1,4 +1,3 @@
-
 let currentEvents = []
 let currentOrder = []
 const correctPositions = new Set()
@@ -10,7 +9,7 @@ function startNewGame() {
   scoreDiv.innerHTML = ""
   scoreDiv.className = "score-container"
   tries = 0
-
+  document.getElementById("submitBtn").disabled = false
 
   fetch("/api/new-game")
     .then((response) => response.json())
@@ -42,9 +41,29 @@ function displayEvents() {
     yearEl.className = "event-year"
     yearEl.textContent = event.year
 
-    // hide year
-    if (!correctPositions.has(displayIndex)) { yearEl.classList.add("hidden") }
+    // show year and link if correct
+    if (!correctPositions.has(displayIndex)) { 
+      yearEl.classList.add("hidden") 
+    } else {
+      const wikiLink = document.createElement("a")
+      wikiLink.href = `https://en.wikipedia.org/wiki/${encodeURIComponent(event.title)}`
+      wikiLink.target = "_blank"
+      wikiLink.className = "wiki-link"
+      wikiLink.textContent = "Learn More"
+      yearEl.appendChild(wikiLink)
+    }
     row.appendChild(yearEl)
+
+    // image
+    const imgEl = document.createElement("div")
+    imgEl.className = "event-image"
+    if (event.imageUrl) {
+      const img = document.createElement("img")
+      img.src = event.imageUrl
+      img.alt = event.title
+      imgEl.appendChild(img)
+    }
+    row.appendChild(imgEl)
 
     // container
     const content = document.createElement("div")
@@ -116,6 +135,11 @@ function displayEvents() {
 
 //
 function checkOrder() {
+  // disable if all events are correct
+  if (correctPositions.size === currentEvents.length) {
+    return
+  }
+
   tries++
   fetch("/api/check-order", {
     method: "POST",
@@ -126,14 +150,48 @@ function checkOrder() {
     .then((data) => {
       const scoreDiv = document.getElementById("score")
 
+        //game completed
       if (data.correct) {
         scoreDiv.innerHTML = "<strong>Well done!</strong> It took you " + tries + " tries."
         scoreDiv.className = "score-container correct"
         correctPositions.clear()
         currentOrder.forEach((_, idx) => correctPositions.add(idx))
+        document.getElementById("submitBtn").disabled = true
+
+        // confetti time!
+        const duration = 3 * 1000;
+        const animationEnd = Date.now() + duration;
+        const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+        function randomInRange(min, max) { return Math.random() * (max - min) + min; }
+
+        const interval = setInterval(function() {
+          const timeLeft = animationEnd - Date.now();
+
+          if (timeLeft <= 0) {
+            return clearInterval(interval);
+          }
+
+          const particleCount = 50 * (timeLeft / duration);
+          
+          confetti({
+            ...defaults,
+            particleCount,
+            origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
+          });
+          confetti({
+            ...defaults,
+            particleCount,
+            origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
+          });
+        }, 250);
+
       } else {
+
+        // incorrect guess behavior
         scoreDiv.innerHTML = "<strong>Incorrect order.</strong> Try again!"
         scoreDiv.className = "score-container incorrect"
+        scoreDiv.classList.add('shake')
+        setTimeout(() => {scoreDiv.classList.remove('shake')}, 300)
 
         const correctOrder = [...currentOrder].sort((a, b) => {
           return new Date(currentEvents[a].date) - new Date(currentEvents[b].date)
