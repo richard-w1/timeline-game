@@ -1,16 +1,36 @@
 <!DOCTYPE html>
-<html>
+
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Timeline Game</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
-    <h1>Timeline Game</h1>
-    <p>Drag and swap the events in the correct chronological order, from earliest to most recent.</p>
-    <button onclick="startNewGame()">New Game</button>
-    <button onclick="checkOrder()" id="submitBtn">Submit Order</button>
-    <div id="score"></div>
-    <div id="events"></div>
+    <div class="container">
+        <header>
+            <h1>Timeline Game</h1>
+            <p>Drag and swap the events in the correct chronological order, from earliest to most recent.</p>
+        </header>
+        
+        <div class="controls">
+            <button onclick="startNewGame()" class="btn btn-primary">New Game</button>
+            <button onclick="checkOrder()" id="submitBtn" class="btn btn-secondary">Check Order</button>
+        </div>
+        
+        <div id="score" class="score-container"></div>
+        
+        <div id="events" class="events-container"></div>
+    </div>
+    <footer>
+      <p>All data sourced from <a href="https://www.wikipedia.org" target="_blank">Wikipedia</a> via the <a href="https://byabbe.se/on-this-day/#/" target="_blank">On This Day API</a>.</p>
+      <p>Thanks for playing! Made with Fermyon Spin and TinyGo. <a href="https://github.com/richard-w1/timeline-game" target="_blank">GitHub</a></p>
+    </footer>
     <script src="app.js"></script>
 </body>
-</html> 
+</html>
