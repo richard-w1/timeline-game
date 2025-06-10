@@ -1,6 +1,7 @@
 :root {
     --primary-color: #3a86ff;
     --secondary-color: #8338ec;
+    --tertiary-color: #27ae60;
     --success-color: #06d6a0;
     --light-color: #f8f9fa;
     --dark-color: #212529;
@@ -61,7 +62,13 @@
   }
   
   .btn {
-    padding: 0.75rem 1.5rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
     border: none;
     border-radius: 6px;
     font-weight: 500;
@@ -86,6 +93,15 @@
   
   .btn-secondary:hover {
     background-color: #7028d8;
+  }
+
+  .btn-tertiary {
+    background-color: var(--tertiary-color);
+    color: white;
+  }
+
+  .btn-tertiary:hover {
+    background-color: #27ae60;
   }
   
   .score-container {

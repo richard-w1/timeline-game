@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
 
 <body>
@@ -16,12 +17,26 @@
         <header>
             <h1>Timeline Game</h1>
             <p>Drag to swap the events in the correct chronological order, from earliest to most recent.</p>
+            <p>Every event from the daily challenge happened on this day, <strong><span id="currentDate"></span></strong>.</p>
         </header>
         
         <div class="controls">
-            <button onclick="startNewGame()" class="btn btn-primary">New Game</button>
-            <button onclick="checkOrder()" id="submitBtn" class="btn btn-secondary">Check Order</button>
+            <button onclick="startDailyChallenge()" class="btn btn-primary">
+                <span class="material-icons">calendar_today</span>
+                Daily Challenge
+            </button>
+            <button onclick="startNewGame()" class="btn btn-secondary">
+                <span class="material-icons">shuffle</span>
+                Random Game
+            </button>
         </div>
+        <div class="controls">
+            <button onclick="checkOrder()" id="submitBtn" class="btn btn-tertiary">
+                <span class="material-icons">check_circle</span>
+                Check Order
+            </button>
+        </div>
+
         
         <div id="score" class="score-container"></div>
         
@@ -32,6 +47,11 @@
       <p>Thanks for playing! Made with Fermyon Spin and TinyGo. <a href="https://github.com/richard-w1/timeline-game" target="_blank">GitHub</a></p>
     </footer>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script>
+        const now = new Date();
+        const options = { month: 'long', day: 'numeric' };
+        document.getElementById('currentDate').textContent = now.toLocaleDateString('en-US', options);
+    </script>
     <script src="app.js"></script>
 </body>
 </html>

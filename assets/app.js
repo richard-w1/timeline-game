@@ -3,23 +3,23 @@ let currentOrder = []
 const correctPositions = new Set()
 let tries = 0
 
+async function startGame(mode) {
+    const scoreDiv = document.getElementById("score")
+    scoreDiv.innerHTML = ""
+    scoreDiv.className = "score-container"
+    tries = 0
+    document.getElementById("submitBtn").disabled = false
 
-function startNewGame() {
-  const scoreDiv = document.getElementById("score")
-  scoreDiv.innerHTML = ""
-  scoreDiv.className = "score-container"
-  tries = 0
-  document.getElementById("submitBtn").disabled = false
-
-  fetch("/api/new-game")
-    .then((response) => response.json())
-    .then((data) => {
-      currentEvents = data.events
-      currentOrder = Array.from({ length: currentEvents.length }, (_, i) => i)
-      correctPositions.clear()
-      displayEvents()
-    })
+    const response = await fetch(`/api/${mode === 'daily' ? 'daily-challenge' : 'new-game'}`)
+    const data = await response.json()
+    currentEvents = data.events
+    currentOrder = Array.from({ length: currentEvents.length }, (_, i) => i)
+    correctPositions.clear()
+    displayEvents()
 }
+
+const startDailyChallenge = () => startGame('daily')
+const startNewGame = () => startGame('random')
 
 //
 function displayEvents() {
@@ -152,7 +152,15 @@ function checkOrder() {
 
         //game completed
       if (data.correct) {
-        scoreDiv.innerHTML = "<strong>Well done!</strong> It took you " + tries + " tries."
+        let message;
+        if (tries === 1) {
+            message = "<strong>AMAZING!</strong> You did it first try!";
+        } else if (tries <= 3) {
+            message = "<strong>Wow!</strong> You did it in only " + tries + " tries!";
+        } else {
+            message = "<strong>Well done!</strong> You completed in " + tries + " tries!";
+        }
+        scoreDiv.innerHTML = message;
         scoreDiv.className = "score-container correct"
         correctPositions.clear()
         currentOrder.forEach((_, idx) => correctPositions.add(idx))
@@ -209,4 +217,4 @@ function checkOrder() {
     })
 }
 
-document.addEventListener("DOMContentLoaded", startNewGame)
+document.addEventListener("DOMContentLoaded", startDailyChallenge)

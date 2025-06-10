@@ -13,7 +13,7 @@ import (
 	spinhttp "github.com/fermyon/spin/sdk/go/v2/http"
 )
 
-type HistoricalEvent struct {
+type WikiEvent struct {
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
 	Date        time.Time `json:"date"`
@@ -21,14 +21,16 @@ type HistoricalEvent struct {
 	ImageURL    string    `json:"imageUrl,omitempty"`
 }
 
-func getWikipediaImage(title string) (string, error) {
-	// Convert title to URL format
-	url := fmt.Sprintf("https://en.wikipedia.org/w/api.php?action=query&titles=%s&prop=pageimages&format=json&pithumbsize=300", url.QueryEscape(title))
+var (
+	dailyEvents    []WikiEvent
+	dailyTimestamp time.Time
+	gameRnd        = rand.New(rand.NewSource(time.Now().UnixNano()))
+	dailyRnd       = rand.New(rand.NewSource(0))
+)
 
-	resp, err := spinhttp.Get(url)
-	if err != nil {
-		return "", fmt.Errorf("failed to fetch image: %v", err)
-	}
+func getImages(title string) string {
+	url := fmt.Sprintf("https://en.wikipedia.org/w/api.php?action=query&titles=%s&prop=pageimages&format=json&pithumbsize=300", url.QueryEscape(title))
+	resp, _ := spinhttp.Get(url)
 	defer resp.Body.Close()
 
 	var result struct {
@@ -41,39 +43,35 @@ func getWikipediaImage(title string) (string, error) {
 		} `json:"query"`
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", fmt.Errorf("failed to parse image response: %v", err)
-	}
-
-	// Get the first (and only) page
+	json.NewDecoder(resp.Body).Decode(&result)
 	for _, page := range result.Query.Pages {
 		if page.Thumbnail.Source != "" {
-			return page.Thumbnail.Source, nil
+			return page.Thumbnail.Source
 		}
 	}
-
-	return "", nil
+	return ""
 }
 
-func fetchWikipediaEvents() ([]HistoricalEvent, error) {
-	// random date
+func fetchEvents(mode int) []WikiEvent {
 	now := time.Now()
-	startOfYear := time.Date(now.Year(), 1, 1, 0, 0, 0, 0, time.UTC)
-	randomDays := rand.Intn(365)
-	randomDate := startOfYear.AddDate(0, 0, randomDays)
+	var targetDate time.Time
 
-	url := fmt.Sprintf("https://byabbe.se/on-this-day/%d/%d/events.json", randomDate.Month(), randomDate.Day())
-
-	resp, err := spinhttp.Get(url)
-	if err != nil {
-		return nil, fmt.Errorf("failed to make request: %v", err)
+	if mode == 0 {
+		// daily
+		targetDate = now
+	} else {
+		// random
+		startOfYear := time.Date(now.Year(), 1, 1, 0, 0, 0, 0, time.UTC)
+		randomDays := gameRnd.Intn(365)
+		targetDate = startOfYear.AddDate(0, 0, randomDays)
 	}
+
+	url := fmt.Sprintf("https://byabbe.se/on-this-day/%d/%d/events.json",
+		targetDate.Month(), targetDate.Day())
+	resp, _ := spinhttp.Get(url)
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %v", err)
-	}
+	body, _ := io.ReadAll(resp.Body)
 
 	var apiResp struct {
 		Date   string `json:"date"`
@@ -86,24 +84,16 @@ func fetchWikipediaEvents() ([]HistoricalEvent, error) {
 			} `json:"wikipedia"`
 		} `json:"events"`
 	}
-	if err := json.Unmarshal(body, &apiResp); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %v", err)
-	}
+	json.Unmarshal(body, &apiResp)
 
-	if len(apiResp.Events) == 0 {
-		return nil, fmt.Errorf("no events found for date %d/%d", randomDate.Month(), randomDate.Day())
-	}
-
-	// First, collect all valid events without images
-	validEvents := make([]HistoricalEvent, 0, len(apiResp.Events))
+	validEvents := make([]WikiEvent, 0, len(apiResp.Events))
 	for _, e := range apiResp.Events {
-		year, err := strconv.Atoi(e.Year)
-		if err != nil || year <= 0 || year > time.Now().Year() {
+		year, _ := strconv.Atoi(e.Year)
+		if year <= 0 || year > time.Now().Year() {
 			continue
 		}
 
-		date := time.Date(year, randomDate.Month(), randomDate.Day(), 0, 0, 0, 0, time.UTC)
-
+		date := time.Date(year, targetDate.Month(), targetDate.Day(), 0, 0, 0, 0, time.UTC)
 		title := e.Description
 		if len(e.Wikipedia) > 0 && e.Wikipedia[0].Title != "" {
 			title = e.Wikipedia[0].Title
@@ -113,7 +103,7 @@ func fetchWikipediaEvents() ([]HistoricalEvent, error) {
 			continue
 		}
 
-		validEvents = append(validEvents, HistoricalEvent{
+		validEvents = append(validEvents, WikiEvent{
 			Title:       title,
 			Description: e.Description,
 			Date:        date,
@@ -121,33 +111,31 @@ func fetchWikipediaEvents() ([]HistoricalEvent, error) {
 		})
 	}
 
-	if len(validEvents) == 0 {
-		return nil, fmt.Errorf("no valid events found for date %d/%d", randomDate.Month(), randomDate.Day())
+	// check mode
+	if mode == 0 {
+		dailyRnd.Shuffle(len(validEvents), func(i, j int) {
+			validEvents[i], validEvents[j] = validEvents[j], validEvents[i]
+		})
+	} else {
+		gameRnd.Shuffle(len(validEvents), func(i, j int) {
+			validEvents[i], validEvents[j] = validEvents[j], validEvents[i]
+		})
 	}
-
-	// Shuffle and pick 5 events
-	rand.Shuffle(len(validEvents), func(i, j int) {
-		validEvents[i], validEvents[j] = validEvents[j], validEvents[i]
-	})
 
 	numEvents := 5
 	if len(validEvents) < numEvents {
 		numEvents = len(validEvents)
 	}
 
-	// Now fetch images only for the selected events
 	for i := 0; i < numEvents; i++ {
-		imageURL, _ := getWikipediaImage(validEvents[i].Title)
-		validEvents[i].ImageURL = imageURL
+		validEvents[i].ImageURL = getImages(validEvents[i].Title)
 	}
 
-	return validEvents[:numEvents], nil
+	return validEvents[:numEvents]
 }
 
-// spin http handler
+// api handlers
 func init() {
-	rand.Seed(time.Now().UnixNano())
-
 	spinhttp.Handle(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
@@ -159,48 +147,31 @@ func init() {
 		}
 
 		if r.URL.Path == "/api/new-game" {
-			events, err := fetchWikipediaEvents()
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
-				return
-			}
-
-			rand.Shuffle(len(events), func(i, j int) {
-				events[i], events[j] = events[j], events[i]
-			})
-
-			numEvents := 5
-			if len(events) < numEvents {
-				numEvents = len(events)
-			}
-
-			response := struct {
-				Events []HistoricalEvent `json:"events"`
+			events := fetchEvents(1)
+			json.NewEncoder(w).Encode(struct {
+				Events []WikiEvent `json:"events"`
 			}{
-				Events: events[:numEvents],
-			}
+				Events: events,
+			})
+			return
+		}
 
-			json.NewEncoder(w).Encode(response)
+		if r.URL.Path == "/api/daily-challenge" {
+			events := fetchEvents(0)
+			json.NewEncoder(w).Encode(struct {
+				Events []WikiEvent `json:"events"`
+			}{
+				Events: events,
+			})
 			return
 		}
 
 		if r.URL.Path == "/api/check-order" {
 			var req struct {
-				Order  []int             `json:"order"`
-				Events []HistoricalEvent `json:"events"`
+				Order  []int       `json:"order"`
+				Events []WikiEvent `json:"events"`
 			}
-			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request"})
-				return
-			}
-
-			if len(req.Order) != len(req.Events) {
-				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(map[string]string{"error": "Invalid order length"})
-				return
-			}
+			json.NewDecoder(r.Body).Decode(&req)
 
 			correct := true
 			years := make([]int, len(req.Order))
@@ -215,7 +186,6 @@ func init() {
 				years[i] = req.Events[idx].Year
 			}
 
-			// todo: add scoring (maybe)
 			score := 0
 			if correct {
 				score = 1000
