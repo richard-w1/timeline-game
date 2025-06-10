@@ -2,12 +2,12 @@
 
 A game where players arrange historical events in chronological order. The game fetches historical events from Wikipedia.
 
-![Sample Game Screenshot](sample.png)
+![Sample Game Screenshot](sample1.png)
 
 ## Made with
 
-- [Spin](https://developer.fermyon.com/spin/install) - WebAssembly runtime
-- [TinyGo](https://tinygo.org/) - Go compiler
+- [Spin](https://developer.fermyon.com/spin/install) - Wasm runtime
+- [TinyGo](https://tinygo.org/) - Go Wasm compiler
 - [Wikipedia API by Byabbe](https://byabbe.se/on-this-day/#/)
 
 ## Setup
