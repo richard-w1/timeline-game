@@ -122,7 +122,7 @@ func fetchEvents(mode int) []WikiEvent {
 		})
 	}
 
-	numEvents := 5
+	numEvents := 6
 	if len(validEvents) < numEvents {
 		numEvents = len(validEvents)
 	}
