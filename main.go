@@ -86,52 +86,59 @@ func fetchEvents(mode int) []WikiEvent {
 	}
 	json.Unmarshal(body, &apiResp)
 
-	validEvents := make([]WikiEvent, 0, len(apiResp.Events))
-	for _, e := range apiResp.Events {
+	// filter events
+	validIndices := make([]int, 0, len(apiResp.Events))
+	for i, e := range apiResp.Events {
 		year, _ := strconv.Atoi(e.Year)
-		if year <= 0 || year > time.Now().Year() {
+		if year <= 0 || year > time.Now().Year() || e.Description == "" {
 			continue
 		}
+		validIndices = append(validIndices, i)
+	}
 
+	// shuffle indices
+	if mode == 0 {
+		dailyRnd.Shuffle(len(validIndices), func(i, j int) {
+			validIndices[i], validIndices[j] = validIndices[j], validIndices[i]
+		})
+	} else {
+		gameRnd.Shuffle(len(validIndices), func(i, j int) {
+			validIndices[i], validIndices[j] = validIndices[j], validIndices[i]
+		})
+	}
+
+	// 6 events
+	numEvents := 6
+	if len(validIndices) < numEvents {
+		numEvents = len(validIndices)
+	}
+	validIndices = validIndices[:numEvents]
+
+	// create structs
+	validEvents := make([]WikiEvent, numEvents)
+	for i, idx := range validIndices {
+		e := apiResp.Events[idx]
+		year, _ := strconv.Atoi(e.Year)
 		date := time.Date(year, targetDate.Month(), targetDate.Day(), 0, 0, 0, 0, time.UTC)
 		title := e.Description
 		if len(e.Wikipedia) > 0 && e.Wikipedia[0].Title != "" {
 			title = e.Wikipedia[0].Title
 		}
 
-		if e.Description == "" {
-			continue
-		}
-
-		validEvents = append(validEvents, WikiEvent{
+		validEvents[i] = WikiEvent{
 			Title:       title,
 			Description: e.Description,
 			Date:        date,
 			Year:        year,
-		})
+		}
 	}
 
-	// check mode
-	if mode == 0 {
-		dailyRnd.Shuffle(len(validEvents), func(i, j int) {
-			validEvents[i], validEvents[j] = validEvents[j], validEvents[i]
-		})
-	} else {
-		gameRnd.Shuffle(len(validEvents), func(i, j int) {
-			validEvents[i], validEvents[j] = validEvents[j], validEvents[i]
-		})
-	}
-
-	numEvents := 6
-	if len(validEvents) < numEvents {
-		numEvents = len(validEvents)
-	}
-
-	for i := 0; i < numEvents; i++ {
+	// fetch images
+	for i := range validEvents {
 		validEvents[i].ImageURL = getImages(validEvents[i].Title)
 	}
 
-	return validEvents[:numEvents]
+	return validEvents
 }
 
 // api handlers
